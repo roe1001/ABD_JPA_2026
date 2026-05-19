@@ -1,45 +1,34 @@
-package es.ubu.lsi.dao;
+package es.ubu.lsi.dao.conciertos;
 
 import java.util.List;
+import javax.persistence.EntityManager;
+import es.ubu.lsi.dao.JpaDAO;
+import es.ubu.lsi.model.conciertos.Cliente;
 
 /**
- * DAO.
- * 
- * @param <E> entity type
- * @param <K> key type
- * @author <a href="mailto:jmaudes@ubu.es">Jesús Maudes</a>
- * @author <a href="mailto:rmartico@ubu.es">Raúl Marticorena</a>
- * @author <a href="mailto:pgdiaz@ubu.es">Pablo García</a> 
- * @author <a href="mailto:srarribas@ubu.es">Sandra Rodríguez</a>  
- * @since 1.0
+ * DAO para la entidad Cliente.
  */
-public interface DAO<E,K> {
-	/** 
-	 * Persist. 
-	 *  
-	 * @param entity entity
-	 */
-	void persist(E entity);
+public class ClienteDAO extends JpaDAO<Cliente, String> {
 
-	/**
-	 * Remove.
-	 * 
-	 * @param entity entity
-	 */
-	void remove(E entity);
-	
-	/**
-	 * Find by primary key.
-	 * 
-	 * @param id value
-	 * @return entity
-	 */
-	E findById(K id);
-	
-	/**
-	 * Find all entities.
-	 * 
-	 * @return all entities
-	 */
-	List<E> findAll();
+    public ClienteDAO(EntityManager em) {
+        super(em);
+    }
+
+    @Override
+    public List<Cliente> findAll() {
+        return getEntityManager()
+            .createQuery("SELECT c FROM Cliente c", Cliente.class)
+            .getResultList();
+    }
+
+    protected Class<Cliente> getEntityClass() {
+        return Cliente.class;
+    }
+
+    /**
+     * Busca un cliente por su NIF (clave primaria).
+     */
+    public Cliente findById(String nif) {
+        return getEntityManager().find(Cliente.class, nif);
+    }
 }
