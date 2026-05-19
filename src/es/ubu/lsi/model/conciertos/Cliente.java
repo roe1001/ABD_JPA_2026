@@ -75,7 +75,7 @@ public class Cliente implements Serializable{
 		this.direccionPostal = dp;
 	}
 	
-	public void setCompras(Set<Compras> compras) {
+	public void setCompras(Set<Compra> compras) {
 		this.compras = compras;
 	}
 	

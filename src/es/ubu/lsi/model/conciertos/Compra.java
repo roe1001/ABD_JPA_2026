@@ -30,7 +30,7 @@ public class Compra implements Serializable {
 
     // Constructor con parámetros
     public Compra(Integer idcompra, Integer nTickets, Cliente cliente, Concierto concierto) {
-        setIdcompra(compra;
+        setIdcompra(idcompra);
         setnTickets(nTickets);
         setCliente(cliente);
         setConcierto(concierto);
