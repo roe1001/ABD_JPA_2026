@@ -13,7 +13,7 @@ import javax.persistence.EntityManager;
 /**
  * Implementación del servicio de gestión de conciertos.
  * 
- * @author ROE
+ * @author Marwan Al Haddadine, Álvaro Allyón y Rodrigo Ortiz
  */
 public class ServiceImpl extends PersistenceService implements Service {
 
@@ -37,11 +37,10 @@ public class ServiceImpl extends PersistenceService implements Service {
 	    EntityManager em = null;
 	    
 	    try {
-	        // 1. Obtener EntityManager y comenzar transacción
 	        em = PersistenceFactorySingleton.getEntityManager();
 	        beginTransaction(em);
 	        
-	        // 2. Verificar que el cliente existe
+	        // Verificar que el cliente existe
 	        ClienteDAO clienteDAO = new ClienteDAO(em);
 	        Cliente cliente = clienteDAO.findByNif(nif);
 	        if (cliente == null) {
@@ -49,7 +48,7 @@ public class ServiceImpl extends PersistenceService implements Service {
 	                                       IncidentError.NOT_EXIST_CLIENT);
 	        }
 	        
-	        // 3. Verificar que el grupo existe
+	        // Verificar que el grupo existe
 	        GrupoDAO grupoDAO = new GrupoDAO(em);
 	        Grupo grupo = grupoDAO.findById(idGrupo);
 	        if (grupo == null) {
@@ -57,7 +56,7 @@ public class ServiceImpl extends PersistenceService implements Service {
 	                                       IncidentError.NOT_EXIST_MUSIC_GROUP);
 	        }
 	        
-	        // 4. Buscar el concierto del grupo en esa fecha
+	        // Buscar el concierto del grupo en esa fecha
 	        ConciertoDAO conciertoDAO = new ConciertoDAO(em);
 	        Concierto concierto = conciertoDAO.findByGrupoAndFecha(idGrupo, fecha);
 	        if (concierto == null) {
@@ -66,14 +65,14 @@ public class ServiceImpl extends PersistenceService implements Service {
 	                                       IncidentError.NOT_EXIST_CONCERT);
 	        }
 	        
-	        // 5. Verificar que hay suficientes tickets disponibles
+	        // Verificar que hay suficientes tickets disponibles
 	        if (concierto.getTickets() < tickets) {
 	            throw new IncidentException("Solo quedan " + concierto.getTickets() + 
 	                                       " tickets, pero se solicitan " + tickets,
 	                                       IncidentError.NOT_AVAILABLE_TICKETS);
 	        }
 	        
-	        // 6. Crear la nueva compra
+	        // Crear la nueva compra
 	        CompraDAO compraDAO = new CompraDAO(em);
 	        Integer nuevoId = compraDAO.getNextId();
 	        Compra compra = new Compra();
@@ -82,14 +81,12 @@ public class ServiceImpl extends PersistenceService implements Service {
 	        compra.setCliente(cliente);
 	        compra.setConcierto(concierto);
 	        
-	        // 7. Insertar la compra (persist)
 	        em.persist(compra);
 	        
-	        // 8. Actualizar el concierto (restar tickets) - IMPORTANTE: hacer merge
+	        // Actualizar el concierto (restar tickets)
 	        concierto.setTickets(concierto.getTickets() - tickets);
 	        em.merge(concierto);
 	        
-	        // 9. Commit de la transacción
 	        commitTransaction(em);
 	        
 	    } catch (IncidentException e) {
@@ -101,7 +98,6 @@ public class ServiceImpl extends PersistenceService implements Service {
 	        if (em != null && em.getTransaction().isActive()) {
 	            rollbackTransaction(em);
 	        }
-	        // Loguear el error para depurar
 	        e.printStackTrace();
 	        throw new PersistenceException("Error en la operación comprar: " + e.getMessage(), e);
 	    } finally {
@@ -135,15 +131,15 @@ public class ServiceImpl extends PersistenceService implements Service {
 	            return;
 	        }
 	        
-	        // PRIMERO: Eliminar compras
+	        // Eliminar compras
 	        CompraDAO compraDAO = new CompraDAO(em);
 	        compraDAO.deleteByGrupoId(idGrupo);
 	        
-	        // SEGUNDO: Eliminar conciertos
+	        //Eliminar conciertos
 	        ConciertoDAO conciertoDAO = new ConciertoDAO(em);
 	        conciertoDAO.deleteByGrupoId(idGrupo);
 	        
-	        // TERCERO: Desactivar el grupo
+	        //Desactivar el grupo
 	        grupo.setActivo(0);
 	        em.merge(grupo);
 	        
@@ -178,6 +174,7 @@ public class ServiceImpl extends PersistenceService implements Service {
             em = PersistenceFactorySingleton.getEntityManager();
             beginTransaction(em);
             
+            //carga grupos con sus conciertos, compras y clientes en una sola consulta
             List<Grupo> grupos = em.createQuery(
                 "SELECT DISTINCT g FROM Grupo g " +
                 "LEFT JOIN FETCH g.conciertos c " +
