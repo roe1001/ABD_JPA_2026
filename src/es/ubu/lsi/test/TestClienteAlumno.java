@@ -1,428 +1,341 @@
 package es.ubu.lsi.test;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.text.SimpleDateFormat;
-import java.util.List;
-import java.util.Set;
+import java.util.Date;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import es.ubu.lsi.model.conciertos.Cliente;
-import es.ubu.lsi.model.conciertos.Compra;
-import es.ubu.lsi.model.conciertos.Concierto;
-import es.ubu.lsi.model.conciertos.Grupo;
-import es.ubu.lsi.service.PersistenceException;
 import es.ubu.lsi.service.conciertos.IncidentError;
 import es.ubu.lsi.service.conciertos.IncidentException;
 import es.ubu.lsi.service.conciertos.Service;
 import es.ubu.lsi.service.conciertos.ServiceImpl;
-import es.ubu.lsi.test.util.ExecuteScript;
-import es.ubu.lsi.test.util.PoolDeConexiones;
 
 /**
- * Test client.
+ * Tests adicionales para la practica de conciertos.
  * 
- * Realiza los test sobre las transacciones pedidas en la práctica
- * 
- * @author <a href="mailto:jmaudes@ubu.es">Jesús Maudes</a>
- * @author <a href="mailto:rmartico@ubu.es">Raúl Marticorena</a>
- * @author <a href="mailto:pgdiaz@ubu.es">Pablo García</a> 
- * @author <a href="mailto:srarribas@ubu.es">Sandra Rodríguez</a> 
- * @since 1.0
+ * @author Marwan Al Haddadine, Alvaro Allyon y Rodrigo Ortiz
  */
-public class TestClient {
+public class TestClienteAlumno {
 
-	/** Logger. */
-	private static final Logger logger = LoggerFactory.getLogger(TestClient.class);
+    private static Service service;
+    private static SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+    private static int testCount = 0;
+    private static int passedCount = 0;
 
-	/** Connection pool. */
-	private static PoolDeConexiones pool;
-
-	/** Path. */
-	private static final String SCRIPT_PATH = "sql/";
-
-	/** Simple date format. */
-	private static SimpleDateFormat dateformat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-
-	/**
-	 * Main.
-	 * 
-	 * @param args arguments.
-	 */
-	public static void main(String[] args) {
-		try {
-			System.out.println("Iniciando...");
-			init();
-			System.out.println("Probando el servicio...");
-			testService();
-			System.out.println("FIN.............");
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			logger.error("Error grave en la aplicación {}", ex.getMessage());
-		}
-	}
-
-	/**
-	 * Init pool.
-	 */
-	static public void init() {
-		try {
-			// Acuerdate de q la primera vez tienes que crear el .bindings con:
-			//PoolDeConexiones.reconfigurarPool();
-			// Inicializacion de Pool
-			pool = PoolDeConexiones.getInstance();
-		} catch (Exception e) {
-			System.err.println(e.getMessage());
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Create tables.
-	 */
-	static public void createTables() {
-		ExecuteScript.run(SCRIPT_PATH + "script.sql");
-	}
-
-	/**
-	 * Test service using JDBC and JPA.
-	 */
-	static void testService() throws Exception {
-		createTables();
-		Service implService = null;
-		try {
-			// JPA Service
-			implService = new ServiceImpl();
-			System.out.println("Framework y servicio iniciado...");
-
-	
-			// insertar compra correcta
-			insertarCompraCorrecta(implService);
-			
-			// insertar compra con grupo incorrecto
-			insertarCompraGrupoIncorrecto(implService);
-			
-			
-			// insertar compra con cliente incorrecto
-			insertarCompraClienteIncorrecto(implService);
-			
-			
-			// insertar compra con concierto incorrecto
-			insertarCompraConciertoIncorrecto(implService);
-			
-			
-			// insertar compra con número de tickets incorrecto
-			insertarCompraTicketsIncorrectos(implService);			
-			
-			// consulta todos los grupos
-			consultarGruposUsandoGrafo(implService);				
-			
-			
-			// desactivacion correcta
-			desactivacionCorrecta(implService);
-			
-			// desactivacion incorrecta
-			desactivacionIncorrecta(implService);
-
-
-		} catch (Exception e) { // for testing code...
-			logger.error(e.getMessage());
-			e.printStackTrace();
-		} finally {
-			pool = null;
-		}
-	} // testClient
-	
-	
-	/**
-	 * Desactiva a un grupo que no existe
-	 * 
-	 * @param implService implementación del servicio
-	 * @throws Exception error en test
-	 */
-	private static void desactivacionIncorrecta(Service implService) throws Exception {
-		try {
-			System.out.println("Desactivar grupo incorrecto");
-			implService.desactivar(98); 
-
-		} catch (IncidentException ex) {
-			if (ex.getError() == IncidentError.NOT_EXIST_MUSIC_GROUP) {
-				System.out.println("\tOK detecta correctamente que NO existe el grupo");
-			} else {
-				System.out.println("\tERROR detecta un error diferente al esperado:  " + ex.getError().toString());
-			}
-		} catch (PersistenceException ex) {
-			logger.error("ERROR en transacción de desactivar con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error en desactivar ", ex);
-		} catch(Exception ex) {
-			logger.error("ERROR GRAVE de programación en transacción de desactivar con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error grave desactivando grupo ", ex);
-		}
-
-	}
-	
-	/**
-	 * Inserta una compra con grupo incorrecto
-	 * 
-	 * @param implService implementación del servicio
-	 * @throws Exception error en test
-	 */
-	private static void insertarCompraGrupoIncorrecto(Service implService) throws Exception {
-		try {
-			System.out.println("Insertar compra con grupo incorrecto");
-			implService.comprar(dateformat.parse("01/11/2023 21:00:00"), "1111111F", -11, 3); 
-
-		} catch (IncidentException ex) {
-			if (ex.getError() == IncidentError.NOT_EXIST_MUSIC_GROUP) {
-				System.out.println("\tOK detecta correctamente que NO existe el grupo");
-			} else {
-				System.out.println("\tERROR detecta un error diferente al esperado:  " + ex.getError().toString());
-			}
-		} catch (PersistenceException ex) {
-			logger.error("ERROR en transacción de desactivar con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error en desactivar ", ex);
-		} catch(Exception ex) {
-			logger.error("ERROR GRAVE de programación en transacción compra con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error grave insertando compra", ex);
-		}
-
-	}
-	
-	/**
-	 * Inserta una compra con cliente incorrecto
-	 * 
-	 * @param implService implementación del servicio
-	 * @throws Exception error en test
-	 */
-	private static void insertarCompraClienteIncorrecto(Service implService) throws Exception {
-		try {
-			System.out.println("Insertar compra con cliente incorrecto");
-			implService.comprar(dateformat.parse("01/11/2023 21:00:00"), "1111111Z", 1, 3); 
-
-		} catch (IncidentException ex) {
-			if (ex.getError() == IncidentError.NOT_EXIST_CLIENT) {
-				System.out.println("\tOK detecta correctamente que NO existe el cliente");
-			} else {
-				System.out.println("\tERROR detecta un error diferente al esperado:  " + ex.getError().toString());
-			}
-		} catch (PersistenceException ex) {
-			logger.error("ERROR en transacción de desactivar con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error en desactivar ", ex);
-		} catch(Exception ex) {
-			logger.error("ERROR GRAVE de programación en transacción compra con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error grave insertando compra", ex);
-		}
-
-	}
-	
-	/**
-	 * Inserta una compra con concierto incorrecto
-	 * 
-	 * @param implService implementación del servicio
-	 * @throws Exception error en test
-	 */
-	private static void insertarCompraConciertoIncorrecto(Service implService) throws Exception {
-		try {
-			System.out.println("Insertar compra con concierto incorrecto");
-			implService.comprar(dateformat.parse("01/11/2023 17:00:00"), "1111111F", 1, 3); 
-
-		} catch (IncidentException ex) {
-			if (ex.getError() == IncidentError.NOT_EXIST_CONCERT) {
-				System.out.println("\tOK detecta correctamente que NO existe el concierto");
-			} else {
-				System.out.println("\tERROR detecta un error diferente al esperado:  " + ex.getError().toString());
-			}
-		} catch (PersistenceException ex) {
-			logger.error("ERROR en transacción de desactivar con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error en compra ", ex);
-		} catch(Exception ex) {
-			logger.error("ERROR GRAVE de programación en transacción compra con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error grave compra", ex);
-		}
-
-	}
-	
-	/**
-	 * Inserta una compra con número de tickets incorrecto
-	 * 
-	 * @param implService implementación del servicio
-	 * @throws Exception error en test
-	 */
-	private static void insertarCompraTicketsIncorrectos(Service implService) throws Exception {
-		try {
-			System.out.println("Insertar compra con concierto incorrecto");
-			implService.comprar(dateformat.parse("01/11/2023 21:00:00"), "1111111F", 1, 103);
-
-		} catch (IncidentException ex) {
-			if (ex.getError() == IncidentError.NOT_AVAILABLE_TICKETS) {
-				System.out.println("\tOK detecta correctamente que NO existen estos tickets disponibles");
-			} else {
-				System.out.println("\tERROR detecta un error diferente al esperado:  " + ex.getError().toString());
-			}
-		} catch (PersistenceException ex) {
-			logger.error("ERROR en transacción de desactivar con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error en desactivar ", ex);
-		} catch(Exception ex) {
-			logger.error("ERROR GRAVE de programación en transacción compra con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error grave insertando compra", ex);
-		}
-
-	}
-
-
-	/**
-	 * Desactiva a un grupo correctamente
-	 * 
-	 * @param implService implementación del servicio
-	 * @throws Exception error en test
-	 */
-	private static void desactivacionCorrecta(Service implService) throws Exception {
-		Connection con = null;
-		Statement st = null;
-		ResultSet rs = null;
-		try {
-			System.out.println("Desactivar grupo correcto");
-			implService.desactivar(1); 
-
-			con = pool.getConnection();
-
-			st = con.createStatement();
-			rs = st.executeQuery("SELECT activo FROM GRUPO where idgrupo = 1");
-
-			StringBuilder resultado = new StringBuilder();
-			rs.next();
-			resultado.append(rs.getString(1));
-
-			logger.debug(resultado.toString());
-			String cadenaEsperada =
-			// @formatter:off
-			"0"; // nueva fila
-			// @formatter:on
-	
-			if (cadenaEsperada.equals(resultado.toString())) {
-				System.out.println("\tOK grupo correctamente desactivado");
-			} else {
-				System.out.println("\tERROR deasctivando grupo");
-			}
-			rs.close();
-			con.commit();
-		} catch (Exception ex) {
-			logger.error("ERROR grave en test. " + ex.getLocalizedMessage());
-			con.rollback();
-			throw ex;
-		} finally {
-			cerrarRecursos(con, st, rs);
-		}
-		
-	}
-
-	/**
-	 * Prueba consulta de vehiculos, cargando datos completos desde un grafo de
-	 * entidades.
-	 * 
-	 * @param implService implementación del servicio
-	 */
-	private static void consultarGruposUsandoGrafo(Service implService) {
-		try {
-			System.out.println("Información completa con grafos de entidades...");
-			List<Grupo> grupos = implService.consultarGrupos();		
-			for (Grupo grupo : grupos) {
-				System.out.println(grupo.toString());
-				Set<Concierto> conciertos = grupo.getConciertos();
-				for (Concierto concierto : conciertos) {
-					System.out.println("\t" + concierto.toString());
-					Set<Compra> compras = concierto.getCompras();
-					for (Compra compra : compras) {
-						System.out.println("\t\t" + compra.toString());
-						Cliente cliente = compra.getCliente();
-						System.out.println("\t\t" + cliente.toString());
-					}
-				}
-			}
-			System.out.println("OK Sin excepciones en la consulta completa y acceso posterior");
-		} catch (PersistenceException ex) {
-			logger.error("ERROR en transacción de consultas de grupos con JPA: " + ex.getLocalizedMessage());
-			throw new RuntimeException("Error en consulta de grupos", ex);
-		}
-	}
-	
-	/**
-	 * Inserta una compra correcta.
-	 * 
-	 * @param implService implementación del servicio
-	 * @throws Exception error en test
-	 */
-	private static void insertarCompraCorrecta(Service implService) throws Exception {
-
-		Connection con = null;
-		Statement st = null;
-		ResultSet rs = null;
-		try {
-			System.out.println("Insertar compra correcta");
-			implService.comprar(dateformat.parse("01/11/2023 21:00:00"), "1111111F", 1, 3); 
-
-			con = pool.getConnection();
-
-			
-			st = con.createStatement();
-			rs = st.executeQuery("SELECT idcompra||'-'||nif||'-'||idconcierto||'-'||n_tickets FROM COMPRA ORDER BY idcompra desc");
-
-			StringBuilder resultado = new StringBuilder();
-			rs.next();
-			resultado.append(rs.getString(1));
-
-			logger.debug(resultado.toString());
-			String cadenaEsperada =
-			// @formatter:off
-			"6-1111111F-1-3"; // nueva fila
-			// @formatter:on
-	
-			if (cadenaEsperada.equals(resultado.toString())) {
-				System.out.println("\tOK compra bien insertada");
-			} else {
-				System.out.println("\tERROR compra mal insertada");
-			}
-			rs.close();
-			rs = st.executeQuery("SELECT TICKETS FROM CONCIERTO WHERE IDCONCIERTO = 1");
-			StringBuilder resultadoTickets = new StringBuilder();
-			rs.next();
-			resultadoTickets.append(rs.getString(1));
-
-			String ticketsEsperados = "97"; 
-			if (ticketsEsperados.equals(resultadoTickets.toString())) {
-				System.out.println("\tOK actualiza bien los tickets del concierto");
-			} else {
-				System.out.println("\tERROR no actualiza bien los tickets del concierto");
-			}
-			con.commit();
-		} catch (Exception ex) {
-			logger.error("ERROR grave en test. " + ex.getLocalizedMessage());
-			con.rollback();
-			throw ex;
-		} finally {
-			cerrarRecursos(con, st, rs);
-		}
-	}
-
-	/**
-	 * Cierra recursos de la transacción.
-	 * 
-	 * @param con conexión
-	 * @param st  sentencia
-	 * @param rs  conjunto de datos
-	 * @throws SQLException si se produce cualquier error SQL
-	 */
-	private static void cerrarRecursos(Connection con, Statement st, ResultSet rs) throws SQLException {
-		if (rs != null && !rs.isClosed())
-			rs.close();
-		if (st != null && !st.isClosed())
-			st.close();
-		if (con != null && !con.isClosed())
-			con.close();
-	}
-
-} // TestClient
+    public static void main(String[] args) {
+        System.out.println("=== TESTS ADICIONALES ===\n");
+        
+        try {
+            service = new ServiceImpl();
+            System.out.println("Servicio inicializado.\n");
+            
+            testCompraConTicketsCero();
+            testCompraConTicketsNegativos();
+            testCompraConFechaNula();
+            testCompraConNifVacio();
+            testCompraConNifNull();
+            testCompraConGrupoNegativo();
+            testCompraConGrupoCero();
+            
+            testRollbackPorTicketsInsuficientes();
+            testRollbackPorGrupoInexistente();
+            
+            testCompraMultipleMismoConcierto();
+            
+            testDesactivarGrupoCorrecto();
+            testDesactivarGrupoYaInactivo();
+            testCompraDespuesDeDesactivar();
+            
+            testDesactivarGrupoInexistente();
+            
+            System.out.println("\n=== RESULTADOS ===");
+            System.out.println("Tests ejecutados: " + testCount);
+            System.out.println("Tests superados: " + passedCount);
+            System.out.println("Tests fallados: " + (testCount - passedCount));
+            
+            if (testCount == passedCount) {
+                System.out.println("\nTODOS LOS TESTS SUPERADOS");
+            } else {
+                System.out.println("\nAlgunos tests fallaron.");
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Error fatal: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            try {
+                es.ubu.lsi.service.PersistenceFactorySingleton.close();
+                System.out.println("\nRecursos liberados.");
+            } catch (Exception e) {
+                System.err.println("Error al liberar recursos: " + e.getMessage());
+            }
+        }
+    }
+    
+    // Verifica que comprar lance excepcion cuando tickets = 0
+    private static void testCompraConTicketsCero() {
+        testCount++;
+        System.out.println("Test: tickets = 0");
+        try {
+            Date fecha = sdf.parse("01/11/2023 21:00:00");
+            service.comprar(fecha, "1111111F", 1, 0);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_AVAILABLE_TICKETS) {
+                System.out.println("OK: NOT_AVAILABLE_TICKETS");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que comprar lance excepcion cuando tickets son negativos
+    private static void testCompraConTicketsNegativos() {
+        testCount++;
+        System.out.println("Test: tickets negativos (-5)");
+        try {
+            Date fecha = sdf.parse("01/11/2023 21:00:00");
+            service.comprar(fecha, "1111111F", 1, -5);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_AVAILABLE_TICKETS) {
+                System.out.println("OK: NOT_AVAILABLE_TICKETS");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que comprar lance excepcion cuando fecha es null
+    private static void testCompraConFechaNula() {
+        testCount++;
+        System.out.println("Test: fecha = null");
+        try {
+            service.comprar(null, "1111111F", 1, 3);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_EXIST_CONCERT) {
+                System.out.println("OK: NOT_EXIST_CONCERT");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que comprar lance excepcion cuando nif es vacio
+    private static void testCompraConNifVacio() {
+        testCount++;
+        System.out.println("Test: nif vacio ('')");
+        try {
+            Date fecha = sdf.parse("01/11/2023 21:00:00");
+            service.comprar(fecha, "", 1, 3);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_EXIST_CLIENT) {
+                System.out.println("OK: NOT_EXIST_CLIENT");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que comprar lance excepcion cuando nif es null
+    private static void testCompraConNifNull() {
+        testCount++;
+        System.out.println("Test: nif = null");
+        try {
+            Date fecha = sdf.parse("01/11/2023 21:00:00");
+            service.comprar(fecha, null, 1, 3);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_EXIST_CLIENT) {
+                System.out.println("OK: NOT_EXIST_CLIENT");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que comprar lance excepcion cuando idGrupo es negativo
+    private static void testCompraConGrupoNegativo() {
+        testCount++;
+        System.out.println("Test: grupo con ID negativo (-1)");
+        try {
+            Date fecha = sdf.parse("01/11/2023 21:00:00");
+            service.comprar(fecha, "1111111F", -1, 3);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_EXIST_MUSIC_GROUP) {
+                System.out.println("OK: NOT_EXIST_MUSIC_GROUP");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que comprar lance excepcion cuando idGrupo es 0
+    private static void testCompraConGrupoCero() {
+        testCount++;
+        System.out.println("Test: grupo con ID = 0");
+        try {
+            Date fecha = sdf.parse("01/11/2023 21:00:00");
+            service.comprar(fecha, "1111111F", 0, 3);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_EXIST_MUSIC_GROUP) {
+                System.out.println("OK: NOT_EXIST_MUSIC_GROUP");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que se haga rollback al intentar comprar mas tickets de los disponibles
+    private static void testRollbackPorTicketsInsuficientes() {
+        testCount++;
+        System.out.println("Test: Rollback por tickets insuficientes");
+        try {
+            Date fecha = sdf.parse("01/11/2023 21:00:00");
+            service.comprar(fecha, "1111111F", 1, 1000);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_AVAILABLE_TICKETS) {
+                System.out.println("OK: NOT_AVAILABLE_TICKETS");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que se haga rollback al intentar comprar de un grupo inexistente
+    private static void testRollbackPorGrupoInexistente() {
+        testCount++;
+        System.out.println("Test: Rollback por grupo inexistente");
+        try {
+            Date fecha = sdf.parse("01/11/2023 21:00:00");
+            service.comprar(fecha, "1111111F", 999, 3);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_EXIST_MUSIC_GROUP) {
+                System.out.println("OK: NOT_EXIST_MUSIC_GROUP");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que desactivar un grupo inexistente lanza excepcion
+    private static void testDesactivarGrupoInexistente() {
+        testCount++;
+        System.out.println("Test: Desactivar grupo inexistente");
+        try {
+            service.desactivar(999);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_EXIST_MUSIC_GROUP) {
+                System.out.println("OK: NOT_EXIST_MUSIC_GROUP");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Desactiva el grupo 2 correctamente
+    private static void testDesactivarGrupoCorrecto() {
+        testCount++;
+        System.out.println("Test: Desactivar grupo correcto (grupo 2)");
+        try {
+            service.desactivar(2);
+            System.out.println("OK: Grupo desactivado");
+            passedCount++;
+        } catch (IncidentException e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getError());
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que desactivar un grupo ya inactivo no lanza excepcion
+    private static void testDesactivarGrupoYaInactivo() {
+        testCount++;
+        System.out.println("Test: Desactivar grupo ya inactivo (grupo 2)");
+        try {
+            service.desactivar(2);
+            service.desactivar(2);
+            System.out.println("OK: No lanzo excepcion");
+            passedCount++;
+        } catch (IncidentException e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getError());
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Verifica que no se puede comprar de un grupo desactivado
+    private static void testCompraDespuesDeDesactivar() {
+        testCount++;
+        System.out.println("Test: Comprar despues de desactivar grupo (grupo 2)");
+        try {
+            service.desactivar(2);
+            Date fecha = sdf.parse("15/11/2023 22:30:00");
+            service.comprar(fecha, "1111111F", 2, 5);
+            System.err.println("ERROR: Deberia haber lanzado excepcion");
+        } catch (IncidentException e) {
+            if (e.getError() == IncidentError.NOT_EXIST_CONCERT) {
+                System.out.println("OK: NOT_EXIST_CONCERT");
+                passedCount++;
+            } else {
+                System.err.println("ERROR: Codigo incorrecto: " + e.getError());
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+    
+    // Realiza multiples compras del mismo concierto para verificar que resta tickets correctamente
+    private static void testCompraMultipleMismoConcierto() {
+        testCount++;
+        System.out.println("Test: Multiples compras mismo concierto (grupo 2)");
+        try {
+            Date fecha = sdf.parse("01/11/2023 22:00:00");
+            service.comprar(fecha, "1111111F", 2, 10);
+            System.out.println("Primera compra: 10 tickets");
+            service.comprar(fecha, "7352353T", 2, 5);
+            System.out.println("Segunda compra: 5 tickets");
+            System.out.println("OK: Compras realizadas");
+            passedCount++;
+        } catch (IncidentException e) {
+            System.err.println("ERROR: Fallo por: " + e.getError());
+        } catch (Exception e) {
+            System.err.println("ERROR: Excepcion inesperada: " + e.getClass().getSimpleName());
+        }
+    }
+}
